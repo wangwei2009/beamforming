@@ -34,28 +34,27 @@ M =size(z,2);
 %audiowrite('output/z1.wav',z(:,1),fs)
 
 %% estimate RTF
-Start = 1;%14000;
-End = length(x1);%58000;%length(x1);
-[ h_rtf2,U2,yfbf_x12] = ATF_estimate( x1(Start:End),x2(Start:End) );
-[ h_rtf3,U3,yfbf_x13] = ATF_estimate( x1(Start:End),x3(Start:End) );
-[ h_rtf4,U4,yfbf_x14] = ATF_estimate( x1(Start:End),x4(Start:End) );
-yfbf1 = (yfbf_x12+yfbf_x13+yfbf_x14)/(M-1);
+% "We note that system identification was applied only during active speech periods"
+interval = 1:length(x1);%14000:58000
 
-% [ h_rtf2,U2,yfbf_x12] = ATF_estimate2( z1(Start:End),z2(Start:End) );
-% [ h_rtf3,U3,yfbf_x13] = ATF_estimate2( z1(Start:End),z3(Start:End) );
-% [ h_rtf4,U4,yfbf_x14] = ATF_estimate2( z1(Start:End),z4(Start:End) );
-% yfbf2 = (yfbf_x12+yfbf_x13+yfbf_x14)/(M-1);
+h_est = ATF_estimate(z(interval,:));
+% h_est = ATF_estimate2(z(Start:End,:));
 
-h_est = [h_rtf2,h_rtf3,h_rtf4];
 %% BM output
 U = BM_output( z,h_est );
+%try to listen BM output
+% sound(U(:,1),fs);
+%simple leakage comparision
+% max(U)
+
 %% fixed beamformer output
 [ H,W,yfbf ] = fixedBf(z,h_est );
+
 %% multi-channel ANC
-sysorder = 1024;
-y = zeros(size(U(:,1)));
-e = zeros(size(U(:,1)));
-w = zeros(sysorder,M-1);
+sysorder = 1024;         % filter Length
+y = zeros(size(U(:,1))); 
+e = zeros(size(U(:,1))); % error output
+w = zeros(sysorder,M-1); % FIR weights
 d = yfbf;
 
 for n = sysorder : length(x)- sysorder-1
@@ -64,9 +63,9 @@ for n = sysorder : length(x)- sysorder-1
     e(n) = d(n) - y(n) ;
 % Start with big mu for speeding the convergence then slow down to reach the correct weights
      if n < 20
-         mu=2;
+         mu=1;
      else
-         mu=0.5;
+         mu=0.009;
      end
 % Use adaptive step to reach the solution faster mu = 0.95 * 2/M*r(0)
 %     mu=0.00095*2./(5*(0.001+var(u)));
